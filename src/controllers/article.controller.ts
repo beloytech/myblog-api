@@ -14,17 +14,17 @@ export const createArticle = async (
       });
     }
 
-    if (!req.user) {
-      return res.status(401).json({
-        message: "Unauthorized",
-      });
-    }
+    // if (!req.user) {
+    //   return res.status(401).json({
+    //     message: "Unauthorized",
+    //   });
+    // }
 
     const article = await prisma.article.create({
       data: {
         title,
         content,
-        authorId: req.user.userId,
+        authorId: 1,
       },
     });
 
@@ -42,11 +42,59 @@ export const createArticle = async (
 };
 
 export const getArticles = async (
-  _req: Request,
+  req: Request,
   res: Response
 ) => {
   try {
+    const { search, startDate, endDate, page, limit } = req.query;
+    const currentPage = Number(page) || 1;
+    const itemsPerPage = Number(limit) || 10;
+
+    const skip = (currentPage - 1) * itemsPerPage;
+    
     const articles = await prisma.article.findMany({
+      where: {
+  ...(search
+    ? {
+        OR: [
+          {
+            title: {
+              contains: String(search),
+              mode: "insensitive",
+            },
+          },
+          {
+            content: {
+              contains: String(search),
+              mode: "insensitive",
+            },
+          },
+        ],
+      }
+    : {}),
+
+  ...(startDate || endDate
+    ? {
+        createdAt: {
+          ...(startDate
+            ? {
+                gte: new Date(String(startDate)),
+              }
+            : {}),
+          ...(endDate
+            ? {
+                lt:new Date( 
+                new Date(String(endDate)).getTime() + 
+                24 * 60 * 60 * 1000,)
+              }
+            : {}),
+        },
+      }
+    : {}),
+      skip,
+      take: itemsPerPage,
+
+},
       orderBy: {
         createdAt: "desc",
       },
@@ -87,11 +135,11 @@ export const updateArticle = async (
       });
     }
 
-    if (!req.user) {
-      return res.status(401).json({
-        message: "Unauthorized",
-      });
-    }
+    // if (!req.user) {
+    //   return res.status(401).json({
+    //     message: "Unauthorized",
+    //   });
+    // }
 
     if (!title || !content) {
       return res.status(400).json({
@@ -111,7 +159,7 @@ export const updateArticle = async (
       });
     }
 
-    if (article.authorId !== req.user.userId) {
+    if (article.authorId !== 1) {
       return res.status(403).json({
         message: "You are not allowed to update this article",
       });
@@ -153,11 +201,11 @@ export const deleteArticle = async (
       });
     }
 
-    if (!req.user) {
-      return res.status(401).json({
-        message: "Unauthorized",
-      });
-    }
+    // if (!req.user) {
+    //   return res.status(401).json({
+    //     message: "Unauthorized",
+    //   });
+    // }
 
     const article = await prisma.article.findUnique({
       where: {
@@ -171,7 +219,7 @@ export const deleteArticle = async (
       });
     }
 
-    if (article.authorId !== req.user.userId) {
+    if (article.authorId !== 1) {
       return res.status(403).json({
         message: "You are not allowed to delete this article",
       });
